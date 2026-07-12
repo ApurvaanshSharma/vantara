@@ -20,6 +20,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Run as a non-root user. Celery's own startup warns loudly when run as
+# root ("absolutely not recommended") — for a project centered on security
+# engineering, shipping a container that ignores its own dependency's
+# security warning is a real inconsistency, not a cosmetic one.
+# Fixed UID 1000 deliberately: it's the default first-user UID on most
+# Linux distros, which minimizes permission mismatches against the bind
+# mount in docker-compose.yml (files owned by your host user are still
+# readable by a container user sharing that same UID).
+RUN useradd --create-home --uid 1000 --shell /bin/bash appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
 # --reload is a local-dev convenience (auto-restarts on code changes via the

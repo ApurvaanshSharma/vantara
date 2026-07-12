@@ -80,6 +80,7 @@ services:
   backend:
     build:
       context: ./backend
+    image: vantara-backend:latest
     container_name: vantara-backend
     restart: unless-stopped
     environment:
@@ -87,12 +88,46 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      REDIS_URL: redis://redis:6379/0
+      OPENSEARCH_URL: http://opensearch:9200
+      INGEST_API_KEY: ${INGEST_API_KEY}
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app   # bind mount: local code edits reflect immediately via --reload, no rebuild needed
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    networks:
+      - vantara-net
+
+  celery-worker:
+    build:
+      context: ./backend
+    image: vantara-backend:latest
+    container_name: vantara-celery-worker
+    restart: unless-stopped
+    # Same image as backend — same code, same dependencies — just a
+    # different process. This is the standard pattern: one image, multiple
+    # entrypoints, rather than maintaining two separate builds that could
+    # drift out of sync with each other.
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      REDIS_URL: redis://redis:6379/0
+      OPENSEARCH_URL: http://opensearch:9200
+      INGEST_API_KEY: ${INGEST_API_KEY}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      opensearch:
         condition: service_healthy
     networks:
       - vantara-net

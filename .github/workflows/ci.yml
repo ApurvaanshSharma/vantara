@@ -42,10 +42,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     env:
       DATABASE_URL: postgresql+psycopg2://test:test@localhost:5432/vantara_test
       JWT_SECRET_KEY: ci-test-secret-key-not-used-anywhere-real
+      REDIS_URL: redis://localhost:6379/0
+      INGEST_API_KEY: ci-test-ingest-key-not-used-anywhere-real
 
     steps:
       - uses: actions/checkout@v4

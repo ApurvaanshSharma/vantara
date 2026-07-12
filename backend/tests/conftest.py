@@ -8,6 +8,15 @@ data. This is the standard SQLAlchemy testing pattern; the alternative
 (truncating tables between tests, or using a throwaway SQLite file) is
 slower and, for SQLite, risks the tests passing against different SQL
 semantics than what Postgres actually enforces in production.
+
+OpenSearch is mocked at the two call sites (app.main's startup hook, and
+the Celery task) rather than run for real — this test environment has no
+OpenSearch instance available. Everything else (Postgres, Redis) is real.
+Patch target matters here: patching app.core.opensearch_client.index_event
+would NOT affect app.workers.tasks, because tasks.py already did
+`from app.core.opensearch_client import index_event` — that name is now a
+separate reference in tasks.py's own namespace. You have to patch it where
+it's *used*, not where it's *defined*.
 """
 
 import pytest
@@ -15,9 +24,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import app.main as main_module
+import app.workers.tasks as tasks_module
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.redis_client import STREAM_KEY, redis_client
 from app.main import app
+from app.workers.celery_app import celery_app
+
+# Eager mode runs .delay() calls synchronously, in-process, instead of
+# needing a real running Celery worker to consume the task from the broker.
+# Standard pattern for testing Celery-based code.
+celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
 
 engine = create_engine(settings.database_url)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -34,6 +52,26 @@ def db_session():
     session.close()
     transaction.rollback()  # undoes everything the test did, including commits
     connection.close()
+
+
+@pytest.fixture(autouse=True)
+def mock_opensearch(monkeypatch):
+    monkeypatch.setattr(main_module, "ensure_index_template", lambda: None)
+
+    indexed_docs = []
+    monkeypatch.setattr(
+        tasks_module, "index_event", lambda doc: indexed_docs.append(doc)
+    )
+    return indexed_docs  # tests can inspect what "would have" been indexed
+
+
+@pytest.fixture(autouse=True)
+def clean_redis_stream():
+    """Each test gets a clean stream + consumer group — otherwise pending
+    entries from one test's XADD could confuse another test's XREADGROUP."""
+    redis_client.delete(STREAM_KEY)
+    yield
+    redis_client.delete(STREAM_KEY)
 
 
 @pytest.fixture()

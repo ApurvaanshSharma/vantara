@@ -15,10 +15,12 @@ needed here.
 import uuid
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import TOKEN_TYPE_ACCESS, decode_token
 from app.models.user import User, UserRole
@@ -72,3 +74,18 @@ def require_role(allowed_roles: list[UserRole]):
         return current_user
 
     return _check
+
+
+# Log shippers (syslog forwarders, Filebeat-style agents) are machines with
+# a long-lived credential, not humans logging in — a separate auth
+# mechanism from the OAuth2/JWT flow above is the correct design, not
+# a shortcut.
+_ingest_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def verify_ingest_key(api_key: str = Security(_ingest_key_header)) -> None:
+    if api_key != settings.ingest_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing ingest API key",
+        )

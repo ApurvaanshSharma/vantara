@@ -4,17 +4,32 @@ FastAPI application entrypoint. Run with:
 or via the Dockerfile's CMD (no --reload in the container image).
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from app.api.routes import auth
+from app.api.routes import auth, ingest
+from app.core.opensearch_client import ensure_index_template
+from app.core.redis_client import ensure_consumer_group
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Idempotent — safe to run on every restart, not just the first boot.
+    ensure_consumer_group()
+    ensure_index_template()
+    yield
+
 
 app = FastAPI(
     title="Vantara API",
     description="AI-native SOC platform — backend API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.include_router(auth.router)
+app.include_router(ingest.router)
 
 
 @app.get("/health", tags=["health"])
