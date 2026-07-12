@@ -35,8 +35,11 @@ services:
     networks:
       - vantara-net
 
-  # OpenSearch requires a JVM memory lock and a raised host mmap limit.
-  # See the "vm.max_map_count" note in README.md before running `docker compose up`.
+  # OpenSearch's Docker entrypoint runs a security bootstrap step that is
+  # separate from opensearch.yml settings. DISABLE_SECURITY_PLUGIN=true is the
+  # documented way to skip it in Docker; OPENSEARCH_INITIAL_ADMIN_PASSWORD is
+  # kept as a fallback so the bootstrap succeeds even if it still runs.
+  # LOCAL DEV ONLY — never disable security like this outside a laptop environment.
   opensearch:
     image: opensearchproject/opensearch:2.15.0
     container_name: vantara-opensearch
@@ -44,8 +47,8 @@ services:
     environment:
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
       - "9600:9600"
@@ -70,6 +73,26 @@ services:
       - "5601:5601"
     depends_on:
       opensearch:
+        condition: service_healthy
+    networks:
+      - vantara-net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: vantara-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app   # bind mount: local code edits reflect immediately via --reload, no rebuild needed
+    depends_on:
+      postgres:
         condition: service_healthy
     networks:
       - vantara-net

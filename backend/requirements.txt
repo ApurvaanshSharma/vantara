@@ -1,0 +1,21 @@
+# Versions pinned to what was actually verified working together
+# (installed, migrated against real Postgres, and passed the full test suite)
+# rather than guessed — see Phase 2 notes on why this matters after Phase 1's
+# OpenSearch version lesson.
+
+fastapi==0.139.0
+uvicorn[standard]==0.51.0
+sqlalchemy==2.0.51
+alembic==1.18.5
+psycopg2-binary==2.9.12
+pydantic==2.13.4
+pydantic-settings==2.14.2
+email-validator==2.3.0
+PyJWT==2.13.0
+bcrypt==5.0.0
+python-multipart==0.0.32
+
+# --- test dependencies (also needed in the CI image and the Dockerfile's
+# dev target, since tests run inside the container, not on the host) ---
+pytest==9.1.1
+httpx==0.28.1

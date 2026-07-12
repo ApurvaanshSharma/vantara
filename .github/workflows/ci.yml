@@ -23,4 +23,46 @@ jobs:
       - name: Run pre-commit hooks
         run: pre-commit run --all-files
 
-  # test job added in Phase 2 once backend/ has code and a pytest suite
+  test:
+    runs-on: ubuntu-latest
+    # A real Postgres, matching docker-compose.yml's postgres:16-alpine — not
+    # SQLite. Catches Postgres-specific issues (enum types, UUID columns)
+    # that SQLite would silently accept differently.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: vantara_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg2://test:test@localhost:5432/vantara_test
+      JWT_SECRET_KEY: ci-test-secret-key-not-used-anywhere-real
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest -v
