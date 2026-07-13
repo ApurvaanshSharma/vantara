@@ -1,0 +1,18 @@
+title: SSH Authentication Failure
+id: 8c5b2f1a-1111-4a2b-9c3d-000000000001
+status: experimental
+description: >
+    A single failed SSH login. Low severity deliberately — one failed
+    login is weak evidence on its own. See correlation/ssh_bruteforce for
+    the higher-confidence version of this same signal: repeated failures
+    from one source within a short window.
+level: low
+logsource:
+    category: authentication
+detection:
+    selection:
+        source_type: linux_auth
+        action: login_failed
+    condition: selection
+tags:
+    - attack.t1110.001

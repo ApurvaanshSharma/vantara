@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import auth, ingest
+from app.api.routes import auth, detections, ingest
 from app.core.opensearch_client import ensure_index_template
 from app.core.redis_client import ensure_consumer_group
 
@@ -30,6 +30,7 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(ingest.router)
+app.include_router(detections.router)
 
 
 @app.get("/health", tags=["health"])

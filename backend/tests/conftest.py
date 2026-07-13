@@ -21,7 +21,7 @@ it's *used*, not where it's *defined*.
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 import app.main as main_module
@@ -47,10 +47,26 @@ def db_session():
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
 
+    # Standard SQLAlchemy test recipe ("joining a session into an external
+    # transaction"): start a SAVEPOINT, and whenever application code calls
+    # session.commit() — ending that savepoint — immediately open a new one.
+    # Without this, code that legitimately needs to commit mid-test (like
+    # alert_service.save_alerts, which must commit to make its own
+    # savepoint-based dedup checks meaningful) would end the *outer*
+    # transaction instead, and the rollback below would have nothing left
+    # to undo.
+    nested = connection.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def _restart_savepoint(sess, trans):
+        nonlocal nested
+        if not nested.is_active:
+            nested = connection.begin_nested()
+
     yield session
 
     session.close()
-    transaction.rollback()  # undoes everything the test did, including commits
+    transaction.rollback()  # undoes everything the test did, including any commits
     connection.close()
 
 
@@ -72,6 +88,27 @@ def clean_redis_stream():
     redis_client.delete(STREAM_KEY)
     yield
     redis_client.delete(STREAM_KEY)
+
+
+@pytest.fixture(autouse=True)
+def clean_alerts_table():
+    """Celery tasks use their own SessionLocal() (see workers/tasks.py) —
+    correct in production, since a task isn't an HTTP request and has
+    nothing to Depends(get_db) from. But it means alerts written during
+    ingestion (the YARA scan) are REAL commits on a separate connection,
+    invisible to and unaffected by db_session's transaction-rollback
+    isolation above. Clean up explicitly, on a real connection, rather
+    than assuming rollback covers it."""
+    from app.core.database import engine as real_engine
+    from app.models.alert import Alert
+
+    def _truncate():
+        with real_engine.begin() as conn:
+            conn.execute(Alert.__table__.delete())
+
+    _truncate()
+    yield
+    _truncate()
 
 
 @pytest.fixture()

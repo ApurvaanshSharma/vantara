@@ -1,0 +1,18 @@
+title: Firewall Connection Blocked
+id: 8c5b2f1a-2222-4a2b-9c3d-000000000002
+status: experimental
+description: >
+    A firewall blocked a connection. Deliberately has no MITRE tag: a
+    single block event describes an outcome (the firewall did its job),
+    not an attacker technique — tagging it anyway just to have a tag would
+    be checkbox-mapping, not real MITRE mapping. Repeated blocks from one
+    source over time could indicate reconnaissance/scanning, but that's a
+    correlation-level judgment, not something a single event supports.
+level: informational
+logsource:
+    category: firewall
+detection:
+    selection:
+        source_type: firewall_json
+        action: connection_block
+    condition: selection

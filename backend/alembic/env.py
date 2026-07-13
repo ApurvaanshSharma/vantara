@@ -12,6 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings  # noqa: E402
 from app.core.database import Base  # noqa: E402
+from app.models.alert import (
+    Alert,
+)  # noqa: E402,F401  (import registers the model on Base.metadata)
 from app.models.user import (
     User,
 )  # noqa: E402,F401  (import registers the model on Base.metadata)
