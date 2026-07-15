@@ -35,6 +35,8 @@ from app.detection.yara_engine import (
     yara_match_to_alert_dict,
 )
 from app.schemas.event import RawEventIn
+from app.threat_intel.enrichment_service import enrich_ip, enrichment_summary
+from app.threat_intel.scoring import extract_ip_from_message
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,15 @@ def process_stream_batch(batch_size: int = 50) -> int:
                             )
                             for match in matches
                         ]
+                        # YARA alerts don't have a structured source_ip field
+                        # (unlike linux_auth/firewall_json) — best-effort
+                        # extraction from the matched message text instead.
+                        extracted_ip = extract_ip_from_message(normalized.message)
+                        if extracted_ip:
+                            summary = enrichment_summary(enrich_ip(db, extracted_ip))
+                            if summary:
+                                for alert_dict in alert_dicts:
+                                    alert_dict["details"]["threat_intel"] = summary
                         save_alerts(db, alert_dicts)
                 except NormalizationError as e:
                     # Malformed event: log and move on. Acknowledging it anyway

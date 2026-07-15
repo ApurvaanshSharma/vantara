@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     # a human logging in, it's a long-lived credential a machine holds.
     ingest_api_key: str
 
+    # Threat intel — both optional and empty by default. Enrichment is a
+    # nice-to-have layered on top of detection, not a dependency of it;
+    # the app must still start and detection must still work with neither
+    # key configured. Free keys: abuseipdb.com/register,
+    # otx.alienvault.com (Settings -> API Integration).
+    abuseipdb_api_key: str = ""
+    otx_api_key: str = ""
+
     @property
     def celery_broker_url(self) -> str:
         # Same Redis host, DB index 1 instead of 0 — keeps Celery's internal

@@ -65,6 +65,39 @@ def test_run_detection_saves_sigma_and_correlation_alerts(client, monkeypatch):
     assert response_again.json()["total_alerts_created"] == 0
 
 
+def test_sigma_alert_with_public_source_ip_gets_enriched(client, monkeypatch):
+    from app.models.ioc_enrichment import IOCEnrichment
+
+    fake_alert = {
+        "rule_id": "test.sigma.enrich",
+        "rule_title": "Fake Rule With Public IP",
+        "detection_type": "sigma",
+        "severity": "low",
+        "mitre_techniques": [],
+        "source_event_id": "evt-enrich-1",
+        "summary": "fake match with a public IP",
+        "details": {"matched_event": {"source_ip": "118.25.6.39", "message": "test"}},
+    }
+    fake_enrichment = IOCEnrichment(
+        indicator_type="ip", indicator_value="118.25.6.39", combined_threat_score=88
+    )
+    monkeypatch.setattr(
+        detections_module, "run_sigma_detection", lambda lookback_minutes: [fake_alert]
+    )
+    monkeypatch.setattr(
+        detections_module, "run_bruteforce_detection", lambda lookback_minutes: []
+    )
+    monkeypatch.setattr(detections_module, "enrich_ip", lambda db, ip: fake_enrichment)
+
+    headers = _auth_headers(client)
+    client.post("/api/v1/detections/run", headers=headers)
+
+    response = client.get("/api/v1/detections/alerts", headers=headers)
+    alert = next(a for a in response.json() if a["rule_id"] == "test.sigma.enrich")
+    assert alert["details"]["threat_intel"]["combined_threat_score"] == 88
+    assert alert["details"]["threat_intel"]["indicator"] == "118.25.6.39"
+
+
 def test_list_alerts_requires_auth(client):
     response = client.get("/api/v1/detections/alerts")
     assert response.status_code == 401

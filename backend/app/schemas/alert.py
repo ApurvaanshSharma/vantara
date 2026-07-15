@@ -15,6 +15,7 @@ class AlertOut(BaseModel):
     mitre_techniques: list[str]
     source_event_id: str
     summary: str
+    details: dict
     status: AlertStatus
     created_at: datetime
 

@@ -91,6 +91,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       OPENSEARCH_URL: http://opensearch:9200
       INGEST_API_KEY: ${INGEST_API_KEY}
+      ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      OTX_API_KEY: ${OTX_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:
@@ -122,6 +124,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       OPENSEARCH_URL: http://opensearch:9200
       INGEST_API_KEY: ${INGEST_API_KEY}
+      ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      OTX_API_KEY: ${OTX_API_KEY:-}
     volumes:
       - ./backend:/app
     depends_on:

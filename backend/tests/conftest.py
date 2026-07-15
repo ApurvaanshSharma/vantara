@@ -91,20 +91,22 @@ def clean_redis_stream():
 
 
 @pytest.fixture(autouse=True)
-def clean_alerts_table():
+def clean_celery_session_tables():
     """Celery tasks use their own SessionLocal() (see workers/tasks.py) —
     correct in production, since a task isn't an HTTP request and has
-    nothing to Depends(get_db) from. But it means alerts written during
-    ingestion (the YARA scan) are REAL commits on a separate connection,
-    invisible to and unaffected by db_session's transaction-rollback
-    isolation above. Clean up explicitly, on a real connection, rather
-    than assuming rollback covers it."""
+    nothing to Depends(get_db) from. But it means alerts AND ioc_enrichments
+    written during ingestion (YARA scan + its enrichment lookup) are REAL
+    commits on a separate connection, invisible to and unaffected by
+    db_session's transaction-rollback isolation above. Clean up explicitly,
+    on a real connection, rather than assuming rollback covers it."""
     from app.core.database import engine as real_engine
     from app.models.alert import Alert
+    from app.models.ioc_enrichment import IOCEnrichment
 
     def _truncate():
         with real_engine.begin() as conn:
             conn.execute(Alert.__table__.delete())
+            conn.execute(IOCEnrichment.__table__.delete())
 
     _truncate()
     yield
