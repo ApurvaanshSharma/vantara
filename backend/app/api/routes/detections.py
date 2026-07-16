@@ -22,30 +22,9 @@ from app.detection.sigma_engine import run_sigma_detection
 from app.models.alert import Alert, AlertStatus
 from app.models.user import User
 from app.schemas.alert import AlertOut, DetectionRunResult
-from app.threat_intel.enrichment_service import enrich_ip, enrichment_summary
+from app.threat_intel.enrichment_service import enrich_alert_source_ip
 
 router = APIRouter(prefix="/api/v1/detections", tags=["detections"])
-
-
-def _enrich_alert_source_ip(db: Session, alert: dict) -> dict:
-    """Looks for a source_ip in the two places this phase's alert dicts put
-    it — correlation's top-level details.source_ip, or Sigma's nested
-    details.matched_event.source_ip — and attaches an enrichment summary
-    if found. Silently leaves the alert unchanged if there's no IP to
-    enrich (e.g. the firewall Sigma rule's matched_event might not have
-    one, or the IP is private/reserved) — enrichment is additive, never
-    required for an alert to be valid."""
-    source_ip = alert["details"].get("source_ip") or alert["details"].get(
-        "matched_event", {}
-    ).get("source_ip")
-    if not source_ip:
-        return alert
-
-    enrichment = enrich_ip(db, source_ip)
-    summary = enrichment_summary(enrichment)
-    if summary:
-        alert["details"]["threat_intel"] = summary
-    return alert
 
 
 @router.post("/run", response_model=DetectionRunResult)
@@ -59,9 +38,9 @@ def run_detection(
         lookback_minutes=lookback_minutes
     )
 
-    sigma_alert_dicts = [_enrich_alert_source_ip(db, a) for a in sigma_alert_dicts]
+    sigma_alert_dicts = [enrich_alert_source_ip(db, a) for a in sigma_alert_dicts]
     correlation_alert_dicts = [
-        _enrich_alert_source_ip(db, a) for a in correlation_alert_dicts
+        enrich_alert_source_ip(db, a) for a in correlation_alert_dicts
     ]
 
     sigma_saved = save_alerts(db, sigma_alert_dicts)

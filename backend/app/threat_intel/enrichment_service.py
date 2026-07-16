@@ -98,3 +98,24 @@ def enrichment_summary(enrichment: IOCEnrichment | None) -> dict | None:
         "otx_pulse_count": enrichment.otx_pulse_count,
         "otx_malware_families": enrichment.otx_malware_families,
     }
+
+
+def enrich_alert_source_ip(db: Session, alert: dict) -> dict:
+    """Looks for a source_ip in the places this project's alert dicts put
+    it — a top-level details.source_ip (correlation, ML) or Sigma's nested
+    details.matched_event.source_ip — and attaches an enrichment summary
+    if found. Shared across detections.py and ml.py rather than duplicated,
+    since both produce alert dicts with the same details shape. Silently
+    leaves the alert unchanged if there's no IP to enrich — enrichment is
+    additive, never required for an alert to be valid."""
+    source_ip = alert["details"].get("source_ip") or alert["details"].get(
+        "matched_event", {}
+    ).get("source_ip")
+    if not source_ip:
+        return alert
+
+    enrichment = enrich_ip(db, source_ip)
+    summary = enrichment_summary(enrichment)
+    if summary:
+        alert["details"]["threat_intel"] = summary
+    return alert

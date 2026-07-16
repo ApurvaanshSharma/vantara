@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import auth, detections, ingest, threat_intel
+from app.api.routes import auth, detections, ingest, ml, threat_intel
 from app.core.opensearch_client import ensure_index_template
 from app.core.redis_client import ensure_consumer_group
 
@@ -32,6 +32,7 @@ app.include_router(auth.router)
 app.include_router(ingest.router)
 app.include_router(detections.router)
 app.include_router(threat_intel.router)
+app.include_router(ml.router)
 
 
 @app.get("/health", tags=["health"])

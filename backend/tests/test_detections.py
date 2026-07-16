@@ -87,7 +87,15 @@ def test_sigma_alert_with_public_source_ip_gets_enriched(client, monkeypatch):
     monkeypatch.setattr(
         detections_module, "run_bruteforce_detection", lambda lookback_minutes: []
     )
-    monkeypatch.setattr(detections_module, "enrich_ip", lambda db, ip: fake_enrichment)
+    # enrich_ip is called from inside enrich_alert_source_ip's own module now
+    # (detections.py only imports enrich_alert_source_ip itself) — patch it
+    # where it's actually used, same principle as the OpenSearch mocking in
+    # conftest.py.
+    import app.threat_intel.enrichment_service as enrichment_service_module
+
+    monkeypatch.setattr(
+        enrichment_service_module, "enrich_ip", lambda db, ip: fake_enrichment
+    )
 
     headers = _auth_headers(client)
     client.post("/api/v1/detections/run", headers=headers)

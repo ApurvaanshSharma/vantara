@@ -37,6 +37,20 @@ from app.workers.celery_app import celery_app
 # Standard pattern for testing Celery-based code.
 celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
 
+
+@pytest.fixture(scope="session", autouse=True)
+def trained_ml_models():
+    """Trains fresh at the start of the test session rather than assuming
+    someone ran `python -m app.ml.train` first — tests should be
+    self-sufficient. Training is fast (<1s, fixed seed) so retraining
+    every session run costs nothing and guarantees the models under test
+    match the current code, not a possibly-stale artifact from a previous
+    run or a previous version of synthetic_data.py."""
+    from app.ml.train import train_and_evaluate
+
+    train_and_evaluate()
+
+
 engine = create_engine(settings.database_url)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

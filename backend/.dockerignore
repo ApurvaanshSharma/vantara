@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .git/
+ml_models/*.joblib
+ml_models/metrics.json

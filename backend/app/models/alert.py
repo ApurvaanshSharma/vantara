@@ -26,6 +26,7 @@ class DetectionType(str, enum.Enum):
     SIGMA = "sigma"
     CORRELATION = "correlation"
     YARA = "yara"
+    ML = "ml"
 
 
 class AlertSeverity(str, enum.Enum):
