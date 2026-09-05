@@ -7,8 +7,10 @@ or via the Dockerfile's CMD (no --reload in the container image).
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, detections, ingest, ml, threat_intel
+from app.api.routes import auth, cases, detections, ingest, ml, soar, threat_intel
+from app.core.config import settings
 from app.core.opensearch_client import ensure_index_template
 from app.core.redis_client import ensure_consumer_group
 
@@ -28,11 +30,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Without this, every fetch() from the frontend (a different origin —
+# localhost:3000 vs this API's localhost:8000, different ports count as
+# different origins under CORS) gets silently blocked by the browser
+# before the request even reaches FastAPI. Missing entirely until Phase 7
+# added a real browser-based client — nothing before that exercised this
+# path, since curl and pytest's TestClient don't enforce CORS at all.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth.router)
 app.include_router(ingest.router)
 app.include_router(detections.router)
 app.include_router(threat_intel.router)
 app.include_router(ml.router)
+app.include_router(cases.router)
+app.include_router(soar.router)
 
 
 @app.get("/health", tags=["health"])

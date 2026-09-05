@@ -112,7 +112,28 @@ def clean_celery_session_tables():
     written during ingestion (YARA scan + its enrichment lookup) are REAL
     commits on a separate connection, invisible to and unaffected by
     db_session's transaction-rollback isolation above. Clean up explicitly,
-    on a real connection, rather than assuming rollback covers it."""
+    on a real connection, rather than assuming rollback covers it.
+
+    Hard safety check below exists because this exact mistake already
+    happened once: running `docker compose run --rm backend pytest`
+    inherits the container's real DATABASE_URL — production, not a
+    separate test database — and this fixture then truncated real alert
+    data. Refusing to run against anything whose database name doesn't
+    unambiguously say "test" makes that mistake structurally harder to
+    repeat, rather than relying on remembering to pass the right env var
+    every time."""
+    from app.core.config import settings
+
+    db_name = settings.database_url.rsplit("/", 1)[-1]
+    if "test" not in db_name.lower():
+        raise RuntimeError(
+            f"Refusing to run tests against database {db_name!r} — its name "
+            "doesn't contain 'test'. This fixture truncates the alerts and "
+            "ioc_enrichments tables; running it against a non-test database "
+            "will destroy real data. Set DATABASE_URL to a database with "
+            "'test' in its name before running pytest."
+        )
+
     from app.core.database import engine as real_engine
     from app.models.alert import Alert
     from app.models.ioc_enrichment import IOCEnrichment
@@ -136,3 +157,60 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def make_user(db_session):
+    """Factory for a real, persisted User row — needed anywhere a real FK
+    to users.id is exercised (Case.created_by_id, Case.assigned_to_id),
+    same reasoning as make_alert above."""
+    from app.core.security import hash_password
+    from app.models.user import User, UserRole
+
+    created = []
+
+    def _make(**overrides):
+        defaults = dict(
+            email=f"soar-test-{len(created)}@example.com",
+            hashed_password=hash_password("correcthorsebattery"),
+            role=UserRole.ANALYST,
+        )
+        defaults.update(overrides)
+        user = User(**defaults)
+        db_session.add(user)
+        db_session.flush()
+        created.append(user)
+        return user
+
+    return _make
+
+
+@pytest.fixture()
+def make_alert(db_session):
+    """Factory for a real, persisted Alert row — needed by any test
+    exercising SOAR code, since PlaybookRun/BlockedIP have real foreign
+    keys to alerts.id, not the loose string references OpenSearch-sourced
+    data uses elsewhere in this project."""
+    from app.models.alert import Alert, AlertSeverity, DetectionType
+
+    created = []
+
+    def _make(**overrides):
+        defaults = dict(
+            rule_id=f"test.rule.{len(created)}",
+            rule_title="Test Rule",
+            detection_type=DetectionType.SIGMA,
+            severity=AlertSeverity.HIGH,
+            mitre_techniques=["T1110"],
+            source_event_id=f"evt-{len(created)}",
+            summary="test alert",
+            details={},
+        )
+        defaults.update(overrides)
+        alert = Alert(**defaults)
+        db_session.add(alert)
+        db_session.flush()
+        created.append(alert)
+        return alert
+
+    return _make

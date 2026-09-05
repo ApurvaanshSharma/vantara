@@ -92,6 +92,8 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       INGEST_API_KEY: ${INGEST_API_KEY}
       ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
       OTX_API_KEY: ${OTX_API_KEY:-}
     ports:
       - "8000:8000"
@@ -125,6 +127,8 @@ services:
       OPENSEARCH_URL: http://opensearch:9200
       INGEST_API_KEY: ${INGEST_API_KEY}
       ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
       OTX_API_KEY: ${OTX_API_KEY:-}
     volumes:
       - ./backend:/app
@@ -133,6 +137,27 @@ services:
         condition: service_healthy
       opensearch:
         condition: service_healthy
+    networks:
+      - vantara-net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # localhost, NOT http://backend:8000 — this URL is baked into
+        # JavaScript that runs in the USER'S BROWSER, outside the Docker
+        # network entirely. "backend" only resolves *inside* that network
+        # (that's what the backend/celery-worker services use to reach
+        # Postgres/Redis/OpenSearch). The browser only knows about
+        # whatever port is published to the host — localhost:8000, same
+        # as every curl command in this project's own setup instructions.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: vantara-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
     networks:
       - vantara-net
 

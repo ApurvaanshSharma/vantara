@@ -45,6 +45,24 @@ class Settings(BaseSettings):
     abuseipdb_api_key: str = ""
     otx_api_key: str = ""
 
+    # Comma-separated, not a JSON list — matches how every other list-ish
+    # value in this project's .env files gets written (simple, editable by
+    # hand). "http://localhost:3000" covers the frontend's default port;
+    # add the real origin here for anything beyond local dev.
+    cors_origins: str = "http://localhost:3000"
+
+    # SOAR notification webhook — optional, same graceful-degradation
+    # contract as the threat intel keys: empty means the auto_case_notify
+    # playbook still creates the case, just skips the notification step
+    # rather than failing.
+    webhook_url: str = ""
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
+
     @property
     def celery_broker_url(self) -> str:
         # Same Redis host, DB index 1 instead of 0 — keeps Celery's internal

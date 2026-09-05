@@ -11,9 +11,9 @@
 - [ ] Phase 3 — Ingestion & normalization pipeline (Redis Streams, Celery, OpenSearch)
 - [ ] Phase 4 — Detection engine (Sigma, YARA, MITRE ATT&CK mapping)
 - [ ] Phase 5 — Threat intelligence enrichment (AbuseIPDB, AlienVault OTX)
-- [ ] Phase 6 — ML-based anomaly detection (Isolation Forest, Random Forest, SHAP)
-- [ ] Phase 7 — Frontend dashboards (Next.js)
-- [ ] Phase 8 — Case management & SOAR playbooks
+- [x] Phase 6 — ML-based anomaly detection (Isolation Forest, Random Forest, SHAP)
+- [x] Phase 7 — Frontend dashboards (Next.js)
+- [x] Phase 8 — Case management & SOAR playbooks
 - [ ] Phase 9 — Testing, CI/CD hardening, documentation
 
 ## Stack
@@ -29,6 +29,7 @@ docker compose ps        # confirm postgres, redis, opensearch, opensearch-dashb
 ```
 
 OpenSearch Dashboards: http://localhost:5601
+Vantara dashboard: http://localhost:3000
 
 **Linux/WSL only — do this before first run**, or the `opensearch` container will crash-loop:
 
