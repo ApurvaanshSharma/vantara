@@ -1,29 +1,23 @@
 name: CI
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install pre-commit
         run: pip install pre-commit
-
       - name: Run pre-commit hooks
         run: pre-commit run --all-files
-
-  test:
+  backend-test:
     runs-on: ubuntu-latest
     # A real Postgres, matching docker-compose.yml's postgres:16-alpine — not
     # SQLite. Catches Postgres-specific issues (enum types, UUID columns)
@@ -51,29 +45,45 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     env:
       DATABASE_URL: postgresql+psycopg2://test:test@localhost:5432/vantara_test
       JWT_SECRET_KEY: ci-test-secret-key-not-used-anywhere-real
       REDIS_URL: redis://localhost:6379/0
       INGEST_API_KEY: ci-test-ingest-key-not-used-anywhere-real
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         working-directory: backend
         run: pip install -r requirements.txt
-
       - name: Run migrations
         working-directory: backend
         run: alembic upgrade head
-
       - name: Run tests
         working-directory: backend
         run: pytest -v
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Unit tests
+        working-directory: frontend
+        run: npm run test
+      - name: Build
+        working-directory: frontend
+        run: npm run build
