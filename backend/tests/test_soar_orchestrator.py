@@ -1,4 +1,3 @@
-
 from app.models.alert import AlertSeverity
 from app.models.soar import PlaybookName, PlaybookRun, PlaybookRunStatus
 from app.soar import case_notify, orchestrator

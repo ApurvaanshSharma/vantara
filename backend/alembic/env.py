@@ -12,23 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings  # noqa: E402
 from app.core.database import Base  # noqa: E402
-from app.models.alert import (
-    Alert,
-)  # noqa: E402,F401  (import registers the model on Base.metadata)
-from app.models.case import (
-    Case,
-    CaseComment,
-)  # noqa: E402,F401  (import registers the model on Base.metadata)
-from app.models.ioc_enrichment import (
-    IOCEnrichment,
-)  # noqa: E402,F401  (import registers the model on Base.metadata)
-from app.models.soar import (
-    BlockedIP,
-    PlaybookRun,
-)  # noqa: E402,F401  (import registers the model on Base.metadata)
-from app.models.user import (
-    User,
-)  # noqa: E402,F401  (import registers the model on Base.metadata)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
