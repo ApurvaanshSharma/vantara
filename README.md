@@ -2,15 +2,15 @@
 
 **AI-native Security Operations Center platform** — an open-source SIEM/SOAR system built to demonstrate SOC engineering, detection engineering, and applied ML for threat detection.
 
-> 🚧 Under active development. Design docs land in [`docs/architecture`](docs/architecture) as each phase is built.
+> 🚧 Phase 9 (testing, CI/CD hardening) complete and verified on GitHub Actions; documentation in progress. See [`docs/architecture`](docs/architecture) for the system design.
 
 ## Status
 
 - [x] Phase 1 — Repo scaffolding & infrastructure skeleton
-- [ ] Phase 2 — Backend foundation (FastAPI, Postgres, JWT auth)
-- [ ] Phase 3 — Ingestion & normalization pipeline (Redis Streams, Celery, OpenSearch)
-- [ ] Phase 4 — Detection engine (Sigma, YARA, MITRE ATT&CK mapping)
-- [ ] Phase 5 — Threat intelligence enrichment (AbuseIPDB, AlienVault OTX)
+- [x] Phase 2 — Backend foundation (FastAPI, Postgres, JWT auth)
+- [x] Phase 3 — Ingestion & normalization pipeline (Redis Streams, Celery, OpenSearch)
+- [x] Phase 4 — Detection engine (Sigma, YARA, MITRE ATT&CK mapping)
+- [x] Phase 5 — Threat intelligence enrichment (AbuseIPDB, AlienVault OTX)
 - [x] Phase 6 — ML-based anomaly detection (Isolation Forest, Random Forest, SHAP)
 - [x] Phase 7 — Frontend dashboards (Next.js)
 - [x] Phase 8 — Case management & SOAR playbooks
@@ -41,7 +41,7 @@ To make it permanent, add `vm.max_map_count=262144` to `/etc/sysctl.conf`.
 
 ## Architecture
 
-Diagrams added starting Phase 2.
+See [`docs/architecture`](docs/architecture) for the system diagram and the scope/design-decision rationale (what was cut from the original spec, and why).
 
 ## License
 
